@@ -1,0 +1,100 @@
+apiVersion: v1
+data:
+  password: M0dyd0dobjdwMnNiVE1Qb1V6SFlYOVlrZTVvRkc=
+kind: Secret
+metadata:
+  creationTimestamp: null
+  name: postgresql
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: p-init-sql
+  labels:
+    app: api
+data:
+  01_init_db.sql: |-
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    SELECT uuid_generate_v4();
+
+    CREATE TABLE people (
+      uuid uuid DEFAULT uuid_generate_v4 (),
+      survived INT NOT NULL,
+      "passengerClass" INT NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      sex VARCHAR(255) NOT NULL,
+      age REAL NOT NULL,
+      "siblingsOrSpousesAboard" INT NOT NULL,
+      "parentsOrChildrenAboard" INT NOT NULL,
+      fare REAL NOT NULL
+    );
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:bullseye
+        env:
+        - name: POSTGRES_INITDB_ARGS
+          value: "-A md5"
+        - name: POSTGRES_USER
+          value: titanic
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgresql
+              key: password
+        - name: POSTGRES_DB
+          value: postgres
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        - mountPath: /docker-entrypoint-initdb.d
+          name: p-init-sql
+        resources: {}
+      volumes:
+      - name: postgres-storage
+        persistentVolumeClaim:
+          claimName: postgres-pvc
+      - name: p-init-sql
+        configMap:
+          name: p-init-sql
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+spec:
+  selector:
+    app: postgres
+  ports:
+  - name: postgres
+    port: 5432
+    targetPort: 5432
+  type: ClusterIP

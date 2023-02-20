@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: api
+  name: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: api
+    spec:
+      containers:
+        - image: registry/repository:1.2.3
+          name: apiserver
+          ports:
+            - containerPort: 5000
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: postgresql
+            - name: DATABASE_URL
+              value: postgresql+psycopg2://titanic:$(PGPASSWORD)@postgres-service:5432/postgres
+          resources: {}
+status: {}

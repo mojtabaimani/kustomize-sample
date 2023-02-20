@@ -1,4 +1,11 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+# namePrefix: dev-
+# nameSuffix: "-001"
+commonLabels:
+  environment: staging
+  managedBy: kustomize
+# commonAnnotations:
+#   oncallPager: 800-555-1212
 resources:
 - ./../../bases
